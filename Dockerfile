@@ -11,11 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install
 
 COPY . .
 
-RUN pnpm build
+RUN npm run build
 
 ENV NODE_ENV=production
 ENV PORT=10000
