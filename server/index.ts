@@ -107,14 +107,27 @@ async function startServer() {
 
     try {
       const ytdlp = findYtdlp();
-      const proc = spawn(ytdlp, [
+      const args = [
         "--dump-json",
         "--no-warnings",
         "--no-playlist",
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "--referer", "https://www.dailymotion.com/",
-        url,
-      ]);
+        "--force-ipv4",
+        "--impersonate", "Chrome",
+        "--extractor-args", "youtube:player_client=android,web",
+      ];
+
+      if (process.env.PROXY_URL) {
+        args.push("--proxy", process.env.PROXY_URL);
+      }
+      if (process.env.COOKIES_FILE) {
+        args.push("--cookies", process.env.COOKIES_FILE);
+      }
+
+      args.push(url);
+
+      const proc = spawn(ytdlp, args);
 
       let stdout = "";
       let stderr = "";
@@ -321,28 +334,28 @@ async function startServer() {
     const type = downloadType || "combined";
 
     const qualityMap: Record<string, string> = {
-      best: "bestvideo+bestaudio/best",
-      "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-      "720p": "bestvideo[height<=720]+bestaudio/best[height<=720]",
-      "480p": "bestvideo[height<=480]+bestaudio/best[height<=480]",
-      "360p": "bestvideo[height<=360]+bestaudio/best[height<=360]",
+      best: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
+      "1080p": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080][ext=mp4]/best[height<=1080]",
+      "720p": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720][ext=mp4]/best[height<=720]",
+      "480p": "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=480]+bestaudio/best[height<=480][ext=mp4]/best[height<=480]",
+      "360p": "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[height<=360][ext=mp4]/best[height<=360]",
     };
 
     let format: string;
     if (formatId) {
       // If a specific format is selected and it's video-only but user wants combined, append bestaudio
       if (type === "combined") {
-        format = `${formatId}+bestaudio/best`;
+        format = `${formatId}+bestaudio[ext=m4a]/bestaudio/best`;
       } else {
         format = formatId;
       }
     } else if (type === "audio-only") {
-      format = "bestaudio/best";
+      format = "bestaudio[ext=m4a]/bestaudio/best";
     } else if (type === "video-only") {
       const q = quality || "720p";
       format = `bestvideo[height<=${q === "best" ? "9999" : q.replace("p", "")}]/best`;
     } else {
-      format = qualityMap[quality || "720p"] || "bestvideo+bestaudio/best";
+      format = qualityMap[quality || "720p"] || qualityMap.best;
     }
 
     const filename = `video_${downloadId}`;
@@ -356,7 +369,17 @@ async function startServer() {
       "--no-playlist",
       "--no-warnings",
       "--newline",
+      "--force-ipv4",
+      "--impersonate", "Chrome",
+      "--extractor-args", "youtube:player_client=android,web",
     ];
+
+    if (process.env.PROXY_URL) {
+      args.push("--proxy", process.env.PROXY_URL);
+    }
+    if (process.env.COOKIES_FILE) {
+      args.push("--cookies", process.env.COOKIES_FILE);
+    }
 
     if (ffmpegPath) {
       args.push("--ffmpeg-location", path.dirname(ffmpegPath));
